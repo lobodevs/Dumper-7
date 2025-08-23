@@ -713,7 +713,7 @@ void CppGenerator::GenerateStruct(const StructWrapper& Struct, StreamType& Struc
 	if (bHasReusedTrailingPadding)
 		StructFile << "#pragma pack(pop)\n";
 
-	if constexpr (Settings::Debug::bGenerateInlineAssertionsForStructSize)
+	if (Settings::Debug::bGenerateInlineAssertionsForStructSize)
 	{
 		if (Struct.HasCustomTemplateText())
 			return;
@@ -730,7 +730,7 @@ void CppGenerator::GenerateStruct(const StructWrapper& Struct, StreamType& Struc
 	}
 
 
-	if constexpr (Settings::Debug::bGenerateInlineAssertionsForStructMembers)
+	if (Settings::Debug::bGenerateInlineAssertionsForStructMembers)
 	{
 		std::string UniquePrefixedName = StructNameOverride.empty() ? GetStructPrefixedName(Struct) : StructNameOverride;
 

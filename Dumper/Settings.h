@@ -14,14 +14,16 @@ namespace Settings
 		return true;
 #endif
 	}
+
   
 	inline constexpr const char* GlobalConfigPath = "C:/Dumper-7/Dumper-7.ini";
 
 	namespace Config
 	{
 		inline int SleepTimeout = 0;
+		inline int DumpKey = 0;
 		inline std::string SDKNamespaceName = "SDK";
-
+		inline std::string SDKGenerationPath = "C:/Dumper-7";
 		void Load();
 	};
 
@@ -31,7 +33,7 @@ namespace Settings
 		constexpr bool bCheckEnumNamesInUEnum = true;
 
 		/* Enables support for TEncryptedObjectProperty */
-		constexpr bool bEnableEncryptedObjectPropertySupport = false;
+		constexpr bool bEnableEncryptedObjectPropertySupport =  true;
 	}
 
 	namespace Generator
@@ -39,8 +41,8 @@ namespace Settings
 		//Auto generated if no override is provided
 		inline std::string GameName = "";
 		inline std::string GameVersion = "";
-
-		inline constexpr const char* SDKGenerationPath = "C:/Dumper-7";
+		inline std::string SDKGenerationPath = Config::SDKGenerationPath.c_str();
+		
 	}
 
 	namespace CppGenerator
@@ -72,7 +74,7 @@ R"(
 	}
 )";
 		/* An option to force the UWorld::GetWorld() function in the SDK to get the world through an instance of UEngine. Useful for games on which the dumper finds the wrong GWorld offset. */
-		constexpr bool bForceNoGWorldInSDK = false;
+		constexpr bool bForceNoGWorldInSDK =  true;
 
 		/* This will allow the user to manually initialize global variable addresses in the SDK (eg. GObjects, GNames, AppendString). */
 		constexpr bool bAddManualOverrideOptions = true;
@@ -96,17 +98,17 @@ R"(
 	/* Partially implemented  */
 	namespace Debug
 	{
-		inline constexpr bool bGenerateAssertionFile = false;
+		inline constexpr bool bGenerateAssertionFile = true;
 
 		/* Adds static_assert for struct-size, as well as struct-alignment */
-		inline constexpr bool bGenerateInlineAssertionsForStructSize = true;
+		inline bool bGenerateInlineAssertionsForStructSize = true;
 
 		/* Adds static_assert for member-offsets */
-		inline constexpr bool bGenerateInlineAssertionsForStructMembers = true;
+		inline bool bGenerateInlineAssertionsForStructMembers = true;
 
 
 		/* Prints debug information during Mapping-Generation */
-		inline constexpr bool bShouldPrintMappingDebugData = false;
+		inline constexpr bool bShouldPrintMappingDebugData = true;
 	}
 
 	//* * * * * * * * * * * * * * * * * * * * *// 

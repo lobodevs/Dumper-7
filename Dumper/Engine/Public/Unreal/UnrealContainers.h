@@ -4,7 +4,10 @@
 #include <stdexcept>
 
 #include "Enums.h"
-#include "Encoding/UtfN.hpp"
+#include <cstring>
+#include <malloc.h>
+#include <ostream>
+#include <Encoding/UtfN.hpp>
 
 
 namespace UC

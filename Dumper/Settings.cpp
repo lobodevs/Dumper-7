@@ -110,26 +110,45 @@ void Settings::Config::Load()
 {
 	namespace fs = std::filesystem;
 
-	// Try local Dumper-7.ini
+	// Check for config next to dll instead of next to game exe
+	wchar_t dumper[256];
+	GetModuleFileNameW(GetModuleHandleW(L"Dumper-7.dll"), dumper, 256 );
+	fs::path DumperDll = dumper;
+	wchar_t app[256];
+	GetModuleFileNameW(NULL, app, 256);
+	const std::string appName = fs::path(app).stem().string();
+	// Try local Dumper-7.ini 
+	const std::string DllPath = (DumperDll.parent_path() / "Dumper-7.ini").string();
 	const std::string LocalPath = (fs::current_path() / "Dumper-7.ini").string();
-	const char* ConfigPath = nullptr;
+	const char* ConfigPath = nullptr;	
 
-	if (fs::exists(LocalPath)) 
-	{
-		ConfigPath = LocalPath.c_str();
-	}
-	else if (fs::exists(GlobalConfigPath)) // Try global path
-	{
-		ConfigPath = GlobalConfigPath;
-	}
+	if (fs::exists(LocalPath)) ConfigPath = LocalPath.c_str();
+	else if (fs::exists(DllPath)) ConfigPath = DllPath.c_str(); 
+	else if (fs::exists(GlobalConfigPath)) ConfigPath = GlobalConfigPath;
+	
 
 	// If no config found, use defaults
 	if (!ConfigPath) 
 		return;
 
 	char SDKNamespace[256] = {};
+	char SDKPath[256] = {};
 	GetPrivateProfileStringA("Settings", "SDKNamespaceName", "SDK", SDKNamespace, sizeof(SDKNamespace), ConfigPath);
+	GetPrivateProfileStringA("Settings", "SDKGenerationPath", "C:/Dumper-7", SDKPath, sizeof(SDKPath), ConfigPath);
+	std::string sdkPathStr = SDKPath;
+	if (sdkPathStr.find("%AppName%") != std::string::npos) {
+				sdkPathStr.replace(sdkPathStr.find("%AppName%"), 9, appName);
+	}
+	if (fs::path(sdkPathStr).is_relative()){
+		fs::path sdkPath = ConfigPath;
+		sdkPath = sdkPath.parent_path() / sdkPathStr;
+		sdkPathStr = sdkPath.lexically_normal().string();	
+	}	
 
 	SDKNamespaceName = SDKNamespace;
+	SDKGenerationPath = sdkPathStr;
+	// VK scancode ID as an Int, e.g. 0x77 or 119 = VK_F8 (yes actually type 0x77 in your ini)
+	DumpKey = max(GetPrivateProfileIntA("Settings", "DumpKey", 0, ConfigPath),0);
 	SleepTimeout = max(GetPrivateProfileIntA("Settings", "SleepTimeout", 0, ConfigPath), 0);
+	if(SleepTimeout < 1000) SleepTimeout *= 1000;
 }
