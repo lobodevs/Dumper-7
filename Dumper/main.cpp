@@ -11,6 +11,8 @@
 #include "Generators/Generator.h"
 #include <thread>
 
+#include "QuickDllProxy/DllProxy.h"
+
 enum class EFortToastType : uint8
 {
         Default                        = 0,
@@ -62,20 +64,12 @@ static int Dump(HMODULE Module) {
 
 	std::cerr << "\n\nGenerating SDK took (" << ms_double_.count() << "ms)\n\n\n";
 
-	while (true)
-	{
-		if (GetAsyncKeyState(VK_F6) & 1)
-		{
-			fclose(stderr);
-			if (Dummy) fclose(Dummy);
-			FreeConsole();
+	Sleep(100);
+	fclose(stderr);
+	if (Dummy) fclose(Dummy);
+	FreeConsole();
 
-			FreeLibraryAndExitThread(Module, 0);
-		}
-
-		Sleep(100);
-	}
-
+	FreeLibraryAndExitThread(Module, 0);
 	return 0;
 }
 
@@ -90,47 +84,44 @@ void listener()
 	Sleep(50);
 }
 
-DWORD MainThread(HMODULE Module)
-{
-
+DWORD MainThread(HMODULE Module) {
 	static auto t_0 = std::chrono::high_resolution_clock::now();
 	Settings::Config::Load();
-	if (Settings::Config::SleepTimeout + Settings::Config::DumpKey == 0 )
-		return Dump(Module);
+	char dumper[256];
+	// Kind of pointless but it allows the dll to be renamed and its easier to get that here while we already have the handle
+	GetModuleFileNameA(Module, dumper, sizeof(dumper));
+	Settings::Config::ModulePath = dumper;
 	if (Settings::Config::DumpKey == 0) {
 		Sleep(Settings::Config::SleepTimeout);
 		return Dump(Module);
-		}
-	else {
-		std::thread listenerThread(listener);
-		listenerThread.detach();
-		auto t_x = std::chrono::high_resolution_clock::now();
-		auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(t_x - t_0).count();
-		while (!keyPressed)
-		{
-			if (Settings::Config::SleepTimeout > 0) {
-				t_x = std::chrono::high_resolution_clock::now();
-				diff = std::chrono::duration_cast<std::chrono::milliseconds>(t_x - t_0).count();
-				if (diff >= Settings::Config::SleepTimeout) {
-					std::cerr << "Timeout reached, dumping SDK...\n";
-					return Dump(Module);
-				}
-			}
-			Sleep(100);
-		}
-		return Dump(Module);
 	}
+
+	std::thread listenerThread(listener);
+	listenerThread.detach();
+	auto t_x = std::chrono::high_resolution_clock::now();
+	auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(t_x - t_0).count();
+	while (!keyPressed) {
+		if (Settings::Config::SleepTimeout > 0) {
+			t_x = std::chrono::high_resolution_clock::now();
+			diff = std::chrono::duration_cast<std::chrono::milliseconds>(t_x - t_0).count();
+			if (diff >= Settings::Config::SleepTimeout) {
+				std::cerr << "Timeout reached, dumping SDK...\n";
+				return Dump(Module);
+			}
+		}
+	Sleep(100);
+	}
+	return Dump(Module);
 
 }
 
 
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
-{
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
 	switch (reason)
 	{
 
 	case DLL_PROCESS_ATTACH:
-		DisableThreadLibraryCalls(hModule);
+		 DisableThreadLibraryCalls(hModule);
 		CreateThread(0, 0, (LPTHREAD_START_ROUTINE)MainThread, hModule, 0, 0);
 		break;
 	}
@@ -138,8 +129,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 	return TRUE;
 }
 
-LRESULT CALLBACK NextHook(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam)
-{
+LRESULT CALLBACK NextHook(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam) {
 	CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)MainThread, GetModuleHandleA("Dumper-7.dll"), 0, nullptr);
 	return CallNextHookEx(0, nCode, wParam, lParam);
 }

@@ -237,5 +237,10 @@
     <ClInclude Include="Engine\Public\Unreal\UnrealTypes.h">
       <Filter>Engine\Public\Unreal</Filter>
     </ClInclude>
+    <ClInclude Include="QuickDllProxy\DllProxy.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="QuickDllProxy\dbghelp_exports.inc" />
+    <None Include="QuickDllProxy\DllProxyImpl.inl" />
   </ItemGroup>
 </Project>

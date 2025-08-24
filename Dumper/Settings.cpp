@@ -111,22 +111,19 @@ void Settings::Config::Load()
 	namespace fs = std::filesystem;
 
 	// Check for config next to dll instead of next to game exe
-	wchar_t dumper[256];
-	GetModuleFileNameW(GetModuleHandleW(L"Dumper-7.dll"), dumper, 256 );
-	fs::path DumperDll = dumper;
+	const fs::path ModuleConfigPath = fs::absolute(ModulePath).parent_path() / "Dumper-7.ini";
+	const auto ModuleConfigPathStr = ModuleConfigPath.string();
 	wchar_t app[256];
 	GetModuleFileNameW(NULL, app, 256);
 	const std::string appName = fs::path(app).stem().string();
 	// Try local Dumper-7.ini 
-	const std::string DllPath = (DumperDll.parent_path() / "Dumper-7.ini").string();
+
 	const std::string LocalPath = (fs::current_path() / "Dumper-7.ini").string();
 	const char* ConfigPath = nullptr;	
 
 	if (fs::exists(LocalPath)) ConfigPath = LocalPath.c_str();
-	else if (fs::exists(DllPath)) ConfigPath = DllPath.c_str(); 
+	else if (fs::exists(ModuleConfigPath)) ConfigPath = ModuleConfigPathStr.c_str();
 	else if (fs::exists(GlobalConfigPath)) ConfigPath = GlobalConfigPath;
-	
-
 	// If no config found, use defaults
 	if (!ConfigPath) 
 		return;
@@ -150,5 +147,6 @@ void Settings::Config::Load()
 	// VK scancode ID as an Int, e.g. 0x77 or 119 = VK_F8 (yes actually type 0x77 in your ini)
 	DumpKey = max(GetPrivateProfileIntA("Settings", "DumpKey", 0, ConfigPath),0);
 	SleepTimeout = max(GetPrivateProfileIntA("Settings", "SleepTimeout", 0, ConfigPath), 0);
+	// If the value is below 1000 assume it's in seconds and convert to ms/
 	if(SleepTimeout < 1000) SleepTimeout *= 1000;
 }

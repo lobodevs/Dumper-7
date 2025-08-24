@@ -184,6 +184,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generator\Public\Generators\DumpspaceGenerator.h" />
+    <ClInclude Include="QuickDllProxy\DllProxy.h" />
     <ClInclude Include="Utils\Compression\zstd.h" />
     <ClInclude Include="Utils\Dumpspace\DSGen.h" />
     <ClInclude Include="Generator\Public\Generators\CppGenerator.h" />
@@ -214,6 +215,10 @@
     <ClInclude Include="Utils\Encoding\UtfN.hpp" />
     <ClInclude Include="Utils\Utils.h" />
     <ClInclude Include="Generator\Public\Wrappers\StructWrapper.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="QuickDllProxy\dbghelp_exports.inc" />
+    <None Include="QuickDllProxy\DllProxyImpl.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

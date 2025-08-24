@@ -20,6 +20,7 @@ namespace Settings
 
 	namespace Config
 	{
+		inline std::string ModulePath = "Dumper-7.dll";
 		inline int SleepTimeout = 0;
 		inline int DumpKey = 0;
 		inline std::string SDKNamespaceName = "SDK";
