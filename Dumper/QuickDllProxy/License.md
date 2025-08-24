@@ -1,3 +1,5 @@
+QuickDllProxy Taken from https://github.com/Nukem9/QuickDllProxy
+                   
                    GNU LESSER GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
