@@ -72,7 +72,7 @@
       <Filter>Engine\Private\OffsetFinder</Filter>
     </ClCompile>
     <ClCompile Include="Settings.cpp">
-      <Filter>Generator</Filter>
+      <Filter>Generator\Public</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -97,9 +97,6 @@
     <Filter Include="Generator\Private">
       <UniqueIdentifier>{d7d31e29-fabc-4f1a-94be-53c5f4940c91}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Generator\Public\Managers">
-      <UniqueIdentifier>{94e86c4a-a3b6-4bff-823c-cc84621b8862}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Generator\Private\Managers">
       <UniqueIdentifier>{93439fa6-5477-4ea1-be46-bd0fee46237b}</UniqueIdentifier>
     </Filter>
@@ -121,9 +118,6 @@
     <Filter Include="Utils\Dumpspace">
       <UniqueIdentifier>{5c4c0ad6-3e5e-4c90-b98f-bcfa3d46d671}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Utils\Json">
-      <UniqueIdentifier>{34aabb03-f73e-4107-b4ee-e7afa15b111d}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Utils\Encoding">
       <UniqueIdentifier>{6b25c48b-0bb2-4044-85fc-d02953c8f851}</UniqueIdentifier>
     </Filter>
@@ -142,22 +136,28 @@
     <Filter Include="Engine\Public\Unreal">
       <UniqueIdentifier>{6a98b5e0-152b-44ed-a5f7-03f0b6fea706}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Generator\Public\Generators\Managers">
+      <UniqueIdentifier>{94e86c4a-a3b6-4bff-823c-cc84621b8862}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils\Json">
+      <UniqueIdentifier>{34aabb03-f73e-4107-b4ee-e7afa15b111d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generator\Public\HashStringTable.h">
       <Filter>Generator\Public</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Managers\CollisionManager.h">
-      <Filter>Generator\Public\Managers</Filter>
+      <Filter>Generator\Public\Generators\Managers</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Managers\EnumManager.h">
-      <Filter>Generator\Public\Managers</Filter>
+      <Filter>Generator\Public\Generators\Managers</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Managers\MemberManager.h">
-      <Filter>Generator\Public\Managers</Filter>
+      <Filter>Generator\Public\Generators\Managers</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Managers\PackageManager.h">
-      <Filter>Generator\Public\Managers</Filter>
+      <Filter>Generator\Public\Generators\Managers</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Wrappers\StructWrapper.h">
       <Filter>Generator\Public\Wrappers</Filter>
@@ -169,19 +169,16 @@
       <Filter>Generator\Public\Wrappers</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Managers\DependencyManager.h">
-      <Filter>Generator\Public\Managers</Filter>
+      <Filter>Generator\Public\Generators\Managers</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Managers\StructManager.h">
-      <Filter>Generator\Public\Managers</Filter>
+      <Filter>Generator\Public\Generators\Managers</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Generators\CppGenerator.h">
       <Filter>Generator\Public\Generators</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Generators\Generator.h">
       <Filter>Generator\Public\Generators</Filter>
-    </ClInclude>
-    <ClInclude Include="Settings.h">
-      <Filter>Generator</Filter>
     </ClInclude>
     <ClInclude Include="Generator\Public\Generators\MappingGenerator.h">
       <Filter>Generator\Public\Generators</Filter>
@@ -238,9 +235,11 @@
       <Filter>Engine\Public\Unreal</Filter>
     </ClInclude>
     <ClInclude Include="QuickDllProxy\DllProxy.h" />
+    <ClInclude Include="Settings.h">
+      <Filter>Generator\Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="QuickDllProxy\dbghelp_exports.inc" />
-    <None Include="QuickDllProxy\DllProxyImpl.inl" />
+    <None Include="ExportListing.inc" />
   </ItemGroup>
 </Project>

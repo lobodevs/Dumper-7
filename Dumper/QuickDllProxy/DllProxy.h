@@ -99,8 +99,7 @@
 //
 #if !defined(DLLPROXY_H_DEDUP)
 #define DLLPROXY_H_DEDUP
-#define DLL_PROXY_EXPORT_LISTING_FILE "dsound_exports.inc"
-#define DLL_PROXY_DECLARE_IMPLEMENTATION
+
 #include <cstdint>
 
 namespace DllProxy
@@ -145,7 +144,7 @@ namespace DllProxy
 #if !defined(DLL_PROXY_TLS_CALLBACK_AUTOINIT)
 	void Initialize();
 #endif // !DLL_PROXY_TLS_CALLBACK_AUTOINIT
-	
+
 	void *DefaultLibraryResolverCallback();
 	bool DefaultExportResolverCallback(void *Module, std::uint32_t Ordinal, const char *Name, void **FunctionPointer);
 	void DefaultExceptionCallback(ErrorCode Code);

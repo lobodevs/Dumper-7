@@ -20,7 +20,7 @@ namespace Settings
 
 	namespace Config
 	{
-		inline std::string ModulePath = "Dumper-7.dll";
+		inline std::string ModulePath = ".\\Dumper-7.dll";
 		inline int SleepTimeout = 0;
 		inline int DumpKey = 0;
 		inline std::string SDKNamespaceName = "SDK";
@@ -42,7 +42,7 @@ namespace Settings
 		//Auto generated if no override is provided
 		inline std::string GameName = "";
 		inline std::string GameVersion = "";
-		inline std::string SDKGenerationPath = Config::SDKGenerationPath.c_str();
+		inline std::string SDKGenerationPath = "C:/Dumper-7";
 		
 	}
 
@@ -95,7 +95,7 @@ R"(
 		/* Which compression method to use when generating the file. */
 		constexpr EUsmapCompressionMethod CompressionMethod = EUsmapCompressionMethod::ZStandard;
 	}
-
+#if DEBUG
 	/* Partially implemented  */
 	namespace Debug
 	{
@@ -111,7 +111,22 @@ R"(
 		/* Prints debug information during Mapping-Generation */
 		inline constexpr bool bShouldPrintMappingDebugData = true;
 	}
+#else
+	namespace Debug
+	{
+		inline constexpr bool bGenerateAssertionFile = false;
 
+		/* Adds static_assert for struct-size, as well as struct-alignment */
+		inline bool bGenerateInlineAssertionsForStructSize = false;
+
+		/* Adds static_assert for member-offsets */
+		inline bool bGenerateInlineAssertionsForStructMembers = false;
+
+
+		/* Prints debug information during Mapping-Generation */
+		inline constexpr bool bShouldPrintMappingDebugData = false;
+	}
+#endif
 	//* * * * * * * * * * * * * * * * * * * * *// 
 	// Do **NOT** change any of these settings //
 	//* * * * * * * * * * * * * * * * * * * * *//

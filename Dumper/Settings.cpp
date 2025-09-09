@@ -111,42 +111,31 @@ void Settings::Config::Load()
 	namespace fs = std::filesystem;
 
 	// Check for config next to dll instead of next to game exe
-	const fs::path ModuleConfigPath = fs::absolute(ModulePath).parent_path() / "Dumper-7.ini";
-	const auto ModuleConfigPathStr = ModuleConfigPath.string();
-	wchar_t app[256];
-	GetModuleFileNameW(NULL, app, 256);
-	const std::string appName = fs::path(app).stem().string();
+	const std::string DllPath = (fs::path(ModulePath).parent_path() / "Dumper-7.ini").string();
 	// Try local Dumper-7.ini 
-
 	const std::string LocalPath = (fs::current_path() / "Dumper-7.ini").string();
-	const char* ConfigPath = nullptr;	
+	const char* ConfigPath = nullptr;
 
 	if (fs::exists(LocalPath)) ConfigPath = LocalPath.c_str();
-	else if (fs::exists(ModuleConfigPath)) ConfigPath = ModuleConfigPathStr.c_str();
+	else if (fs::exists(DllPath)) ConfigPath = DllPath.c_str();
 	else if (fs::exists(GlobalConfigPath)) ConfigPath = GlobalConfigPath;
+
+
 	// If no config found, use defaults
-	if (!ConfigPath) 
+	if (!ConfigPath)
 		return;
+	
 
 	char SDKNamespace[256] = {};
 	char SDKPath[256] = {};
 	GetPrivateProfileStringA("Settings", "SDKNamespaceName", "SDK", SDKNamespace, sizeof(SDKNamespace), ConfigPath);
-	GetPrivateProfileStringA("Settings", "SDKGenerationPath", "C:/Dumper-7", SDKPath, sizeof(SDKPath), ConfigPath);
-	std::string sdkPathStr = SDKPath;
-	if (sdkPathStr.find("%AppName%") != std::string::npos) {
-				sdkPathStr.replace(sdkPathStr.find("%AppName%"), 9, appName);
-	}
-	if (fs::path(sdkPathStr).is_relative()){
-		fs::path sdkPath = ConfigPath;
-		sdkPath = sdkPath.parent_path() / sdkPathStr;
-		sdkPathStr = sdkPath.lexically_normal().string();	
-	}	
-
 	SDKNamespaceName = SDKNamespace;
-	SDKGenerationPath = sdkPathStr;
+	GetPrivateProfileStringA("Settings", "SDKGenerationPath", "C:/Dumper-7", SDKPath, sizeof(SDKPath), ConfigPath);
+	Settings::Generator::SDKGenerationPath = SDKPath;
+
 	// VK scancode ID as an Int, e.g. 0x77 or 119 = VK_F8 (yes actually type 0x77 in your ini)
-	DumpKey = max(GetPrivateProfileIntA("Settings", "DumpKey", 0, ConfigPath),0);
+	DumpKey = max(GetPrivateProfileIntA("Settings", "DumpKey", 0, ConfigPath), 0);
 	SleepTimeout = max(GetPrivateProfileIntA("Settings", "SleepTimeout", 0, ConfigPath), 0);
-	// If the value is below 1000 assume it's in seconds and convert to ms/
-	if(SleepTimeout < 1000) SleepTimeout *= 1000;
+	// Assume they meant seconds not ms if less than 1k 
+	if (SleepTimeout < 1000) SleepTimeout *= 1000;
 }

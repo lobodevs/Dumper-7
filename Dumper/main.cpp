@@ -1,7 +1,18 @@
-#include <Windows.h>
-#include <iostream>
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+// Windows Header Files
 #include <chrono>
-#include <fstream>
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <thread>
+#include <windows.h>
+
+
+std::filesystem::path get_module_path(HMODULE module)
+{
+	WCHAR buf[4096];
+	return GetModuleFileNameW(module, buf, ARRAYSIZE(buf)) ? buf : std::filesystem::path();
+}
 
 #include "Generators/CppGenerator.h"
 #include "Generators/MappingGenerator.h"
@@ -9,9 +20,19 @@
 #include "Generators/DumpspaceGenerator.h"
 
 #include "Generators/Generator.h"
-#include <thread>
 
-#include "QuickDllProxy/DllProxy.h"
+// Using atomics to allow waiting for keypress in a separate thread without race conditions
+std::atomic<bool> keyPressed = false;
+
+// Use the actual value for VK scancodes, e.g. 0x77 = F8
+void listener(int key)
+{
+	while (!keyPressed)
+	{
+		keyPressed = GetAsyncKeyState(key) & 0x8000;
+	}
+	Sleep(50);
+}
 
 enum class EFortToastType : uint8
 {
@@ -21,6 +42,8 @@ enum class EFortToastType : uint8
         EFortToastType_MAX             = 3,
 };
 
+
+// Moved the actual dump task to a separate function to simplify the startup procedure but this could also be exported if needed
 static int Dump(HMODULE Module) {
 	AllocConsole();
 	FILE* Dummy;
@@ -63,8 +86,10 @@ static int Dump(HMODULE Module) {
 	std::chrono::duration<double, std::milli> ms_double_ = t_C - t_1;
 
 	std::cerr << "\n\nGenerating SDK took (" << ms_double_.count() << "ms)\n\n\n";
-
-	Sleep(100);
+	
+	// wait a few seconds and then unload automatically
+   // If someone wants to prevent this they can just click on the console output to pause execution
+	Sleep(5000);
 	fclose(stderr);
 	if (Dummy) fclose(Dummy);
 	FreeConsole();
@@ -73,45 +98,44 @@ static int Dump(HMODULE Module) {
 	return 0;
 }
 
-std::atomic<bool> keyPressed = false;
-void listener()
-{
-	while (!keyPressed)
-	{
-		keyPressed = GetAsyncKeyState(Settings::Config::DumpKey) & 0x8000;
-	
-	}
-	Sleep(50);
-}
+
 
 DWORD MainThread(HMODULE Module) {
-	static auto t_0 = std::chrono::high_resolution_clock::now();
-	Settings::Config::Load();
-	char dumper[256];
-	// Kind of pointless but it allows the dll to be renamed and its easier to get that here while we already have the handle
-	GetModuleFileNameA(Module, dumper, sizeof(dumper));
+	// Grab the path to the dll in case you want to store your settings file adjacent to it and have it out of the game directory
+	char dumper[256]{};
+	GetModuleFileNameA(Module, dumper, 256);
 	Settings::Config::ModulePath = dumper;
+	Settings::Config::Load();
+	std::cerr << Settings::Config::SDKGenerationPath;
+	static auto t_0 = std::chrono::high_resolution_clock::now();
+	// Dump immediately if no timeout or dump key is set
+	if (Settings::Config::SleepTimeout + Settings::Config::DumpKey == 0)
+		return Dump(Module);
+	// If a timeout is set without a dumpkey we will just synchronously wait and then dump
 	if (Settings::Config::DumpKey == 0) {
 		Sleep(Settings::Config::SleepTimeout);
 		return Dump(Module);
 	}
-
-	std::thread listenerThread(listener);
-	listenerThread.detach();
-	auto t_x = std::chrono::high_resolution_clock::now();
-	auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(t_x - t_0).count();
-	while (!keyPressed) {
-		if (Settings::Config::SleepTimeout > 0) {
-			t_x = std::chrono::high_resolution_clock::now();
-			diff = std::chrono::duration_cast<std::chrono::milliseconds>(t_x - t_0).count();
-			if (diff >= Settings::Config::SleepTimeout) {
-				std::cerr << "Timeout reached, dumping SDK...\n";
-				return Dump(Module);
-			}
+	// When a dump key is set we need to suspend execution and wait asynchronously to avoid unloading or dumping early
+	else {	
+		std::thread listenerThread(&listener, Settings::Config::DumpKey);
+		listenerThread.detach();
+		auto t_x = std::chrono::high_resolution_clock::now();
+		while (!keyPressed)
+		{
+		// And finally in the case that both a dump key and timeout are set we will continue checking back on this thread 
+			if (Settings::Config::SleepTimeout > 0) {
+				t_x = std::chrono::high_resolution_clock::now();
+				auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(t_x - t_0).count();
+				if (diff >= Settings::Config::SleepTimeout) {
+					std::cerr << "Timeout reached, dumping SDK...\n";
+					return Dump(Module);
+				}
+			}	
+			Sleep(100);
 		}
-	Sleep(100);
+		return Dump(Module);
 	}
-	return Dump(Module);
 
 }
 
@@ -119,9 +143,8 @@ DWORD MainThread(HMODULE Module) {
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
 	switch (reason)
 	{
-
 	case DLL_PROCESS_ATTACH:
-		 DisableThreadLibraryCalls(hModule);
+		DisableThreadLibraryCalls(hModule);
 		CreateThread(0, 0, (LPTHREAD_START_ROUTINE)MainThread, hModule, 0, 0);
 		break;
 	}
@@ -129,7 +152,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
 	return TRUE;
 }
 
-LRESULT CALLBACK NextHook(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam) {
-	CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)MainThread, GetModuleHandleA("Dumper-7.dll"), 0, nullptr);
-	return CallNextHookEx(0, nCode, wParam, lParam);
-}
+#define DLL_PROXY_EXPORT_LISTING_FILE "ExportListing.inc"   // List of exported functions
+#define DLL_PROXY_DECLARE_IMPLEMENTATION                    // Define the whole implementation
+#include "QuickDllProxy/DllProxy.h"
