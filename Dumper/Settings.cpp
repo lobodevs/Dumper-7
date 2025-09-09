@@ -105,31 +105,36 @@ void Settings::InitArrayDimSizeSettings()
 	Settings::Internal::bUseUint8ArrayDim = false;
 	std::cerr << std::format("\nDumper-7: bUseUint8ArrayDim = {}\n", Settings::Internal::bUseUint8ArrayDim) << std::endl;
 }
-
 void Settings::Config::Load()
 {
 	namespace fs = std::filesystem;
 
-	// Try local Dumper-7.ini
+	// Check for config next to dll instead of next to game exe
+	const std::string DllPath = (fs::path(ModulePath).parent_path() / "Dumper-7.ini").string();
+	// Try local Dumper-7.ini 
 	const std::string LocalPath = (fs::current_path() / "Dumper-7.ini").string();
 	const char* ConfigPath = nullptr;
 
-	if (fs::exists(LocalPath)) 
-	{
-		ConfigPath = LocalPath.c_str();
-	}
-	else if (fs::exists(GlobalConfigPath)) // Try global path
-	{
-		ConfigPath = GlobalConfigPath;
-	}
+	if (fs::exists(LocalPath)) ConfigPath = LocalPath.c_str();
+	else if (fs::exists(DllPath)) ConfigPath = DllPath.c_str();
+	else if (fs::exists(GlobalConfigPath)) ConfigPath = GlobalConfigPath;
+
 
 	// If no config found, use defaults
-	if (!ConfigPath) 
+	if (!ConfigPath)
 		return;
 
-	char SDKNamespace[256] = {};
-	GetPrivateProfileStringA("Settings", "SDKNamespaceName", "SDK", SDKNamespace, sizeof(SDKNamespace), ConfigPath);
 
+	char SDKNamespace[256] = {};
+	char SDKPath[256] = {};
+	GetPrivateProfileStringA("Settings", "SDKNamespaceName", "SDK", SDKNamespace, sizeof(SDKNamespace), ConfigPath);
 	SDKNamespaceName = SDKNamespace;
+	GetPrivateProfileStringA("Settings", "SDKGenerationPath", "C:/Dumper-7", SDKPath, sizeof(SDKPath), ConfigPath);
+	Settings::Generator::SDKGenerationPath = SDKPath;
+
+	// VK scancode ID as an Int, e.g. 0x77 or 119 = VK_F8 (yes actually type 0x77 in your ini)
+	DumpKey = max(GetPrivateProfileIntA("Settings", "DumpKey", 0, ConfigPath), 0);
 	SleepTimeout = max(GetPrivateProfileIntA("Settings", "SleepTimeout", 0, ConfigPath), 0);
+	// Assume they meant seconds not ms if less than 1k 
+	if (SleepTimeout < 1000) SleepTimeout *= 1000;
 }

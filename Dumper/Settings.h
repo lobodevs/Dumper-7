@@ -19,9 +19,11 @@ namespace Settings
 
 	namespace Config
 	{
+		inline std::string ModulePath = ".\\Dumper-7.dll";
 		inline int SleepTimeout = 0;
+		inline int DumpKey = 0;
 		inline std::string SDKNamespaceName = "SDK";
-
+		inline std::string SDKGenerationPath = "C:/Dumper-7";
 		void Load();
 	};
 
@@ -40,7 +42,7 @@ namespace Settings
 		inline std::string GameName = "";
 		inline std::string GameVersion = "";
 
-		inline constexpr const char* SDKGenerationPath = "C:/Dumper-7";
+		inline std::string SDKGenerationPath = "C:/Dumper-7";
 	}
 
 	namespace CppGenerator
