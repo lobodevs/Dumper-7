@@ -185,6 +185,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generator\Public\Generators\DumpspaceGenerator.h" />
+    <ClInclude Include="I:\code\UEVR\include\uevr\API.h" />
     <ClInclude Include="QuickDllProxy\DllProxy.h" />
     <ClInclude Include="Utils\Compression\zstd.h" />
     <ClInclude Include="Utils\Dumpspace\DSGen.h" />

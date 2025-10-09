@@ -1,19 +1,12 @@
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
-// Windows Header Files
-#include <chrono>
-#include <filesystem>
+#include <Windows.h>
 #include <iostream>
+#include <chrono>
+#include <fstream>
+#include <filesystem>
 #include <string>
+#include <Settings.h>
 #include <thread>
-#include <windows.h>
-
-
-std::filesystem::path get_module_path(HMODULE module)
-{
-	WCHAR buf[4096];
-	return GetModuleFileNameW(module, buf, ARRAYSIZE(buf)) ? buf : std::filesystem::path();
-}
-
+#include <Windows.h>
 #include "Generators/CppGenerator.h"
 #include "Generators/MappingGenerator.h"
 #include "Generators/IDAMappingGenerator.h"
@@ -21,38 +14,105 @@ std::filesystem::path get_module_path(HMODULE module)
 
 #include "Generators/Generator.h"
 
-// Using atomics to allow waiting for keypress in a separate thread without race conditions
-std::atomic<bool> keyPressed = false;
 
-// Use the actual value for VK scancodes, e.g. 0x77 = F8
-void listener(int key)
-{
-	while (!keyPressed)
-	{
-		keyPressed = GetAsyncKeyState(key) & 0x8000;
-	}
-	Sleep(50);
-}
+ // Using an atomic bool allows us to reliably wait on another thread without race conditions
+ std::atomic<bool> dumpStarted = false;
+ std::atomic<bool> foundUEVR = false;
+ // Use the actual value for VK scancodes, e.g. 0x77 = F8
+ void ListenerThread(int key)
+ {
+ 	while (!dumpStarted)
+ 	{
+ 		dumpStarted = GetAsyncKeyState(key) & 0x8000;
+ 	}
+ }
+
 
 enum class EFortToastType : uint8
 {
-        Default                        = 0,
-        Subdued                        = 1,
-        Impactful                      = 2,
-        EFortToastType_MAX             = 3,
+	Default = 0,
+	Subdued = 1,
+	Impactful = 2,
+	EFortToastType_MAX = 3,
 };
 
+namespace cfg = Settings::Config;
+extern "C" {
+	#include "I:/code/UEVR/include/uevr/API.h"
+}
 
-// Moved the actual dump task to a separate function to simplify the startup procedure but this could also be exported if needed
-static int Dump(HMODULE Module) {
+static void UEVR()
+{
+	std::cerr << "Checking for UEVR" << std::endl;
+	const auto unreal_vr_backend = GetModuleHandleA("UEVRBackend.dll");
+	if (unreal_vr_backend == nullptr)
+		return;
+	foundUEVR = true;
+	std::cerr << "Found uevr" << std::endl;
+	const UEVR_PluginInitializeParam*  m_plugin_initialize_param = (UEVR_PluginInitializeParam*)GetProcAddress(unreal_vr_backend, "g_plugin_initialize_param");
+	const auto m_sdk{ m_plugin_initialize_param->sdk };
+	if (m_sdk == nullptr)
+		return;
+	const auto m_functions{ m_plugin_initialize_param->functions };
+	if (m_functions == nullptr)
+		return;
+
+	const auto size = m_plugin_initialize_param->functions->get_persistent_dir(nullptr, 0);
+	std::wstring result(size, L'\0');
+	m_plugin_initialize_param->functions->get_persistent_dir(result.data(), size + 1);
+	std::filesystem::path output{result};
+	output /= "Dumper7SDK";
+	std::cerr << "SDKGeneration Path" << output << std::endl;
+	cfg::DumpKey = 0x77;
+	cfg::SleepTimeout = 0;
+	Settings::Generator::SDKGenerationPath = output.string();
+	return;
+}
+
+DWORD MainThread(HMODULE Module)
+{
 	AllocConsole();
 	FILE* Dummy;
 	freopen_s(&Dummy, "CONOUT$", "w", stderr);
 	freopen_s(&Dummy, "CONIN$", "r", stdin);
 
-	auto t_1 = std::chrono::high_resolution_clock::now();
+	using namespace std::chrono;
+	static auto t_0 = high_resolution_clock::now();
+
+	
+	std::thread uevr_thread(&UEVR);
+	uevr_thread.join();
+	if (!foundUEVR) cfg::Load();
+	
+
+	 if (cfg::DumpKey != 0)
+	 {
+	 	std::thread listenerThread(&ListenerThread, cfg::DumpKey);
+	 	// detach the thread and loop so we don't unload or initiate the dump unprompted
+	 	listenerThread.detach();
+	 	while (!dumpStarted)
+	 	{	
+			if (cfg::SleepTimeout != 0)
+	 		{
+				if (duration_cast<milliseconds>(high_resolution_clock::now() - t_0).count() > cfg::SleepTimeout)
+				{
+	 				dumpStarted = true;
+					break;
+				}	 		
+			}
+	 		// sleep a bit to ensure we aren't checking every ms
+	 		Sleep(50);
+	 	}
+	 }
+	 else
+	 {
+	 	// no need to check the value since sleeping for 0 ms does nothing
+	 	Sleep(cfg::SleepTimeout);
+	 }
+
 
 	std::cerr << "Started Generation [Dumper-7]!\n";
+	auto t_1 = high_resolution_clock::now();
 	Generator::InitEngineCore();
 	Generator::InitInternal();
 
@@ -70,88 +130,49 @@ static int Dump(HMODULE Module) {
 
 		Settings::Generator::GameName = Name.ToString();
 		Settings::Generator::GameVersion = Version.ToString();
-		Settings::Internal::bUseLargeWorldCoordinates = Version.ToString().find("UE4") != std::string::npos ? false : true;
 	}
 
 	std::cerr << "GameName: " << Settings::Generator::GameName << "\n";
 	std::cerr << "GameVersion: " << Settings::Generator::GameVersion << "\n\n";
-	Generator::Generate<MappingGenerator>();
+
 	Generator::Generate<CppGenerator>();
+	Generator::Generate<MappingGenerator>();
 	Generator::Generate<IDAMappingGenerator>();
 	Generator::Generate<DumpspaceGenerator>();
 
-	auto t_C = std::chrono::high_resolution_clock::now();
+	auto t_C = high_resolution_clock::now();
 
-	auto ms_int_ = std::chrono::duration_cast<std::chrono::milliseconds>(t_C - t_1);
-	std::chrono::duration<double, std::milli> ms_double_ = t_C - t_1;
+	auto ms_int_ = duration_cast<milliseconds>(t_C - t_1);
+	duration<double, std::milli> ms_double_ = t_C - t_1;
 
 	std::cerr << "\n\nGenerating SDK took (" << ms_double_.count() << "ms)\n\n\n";
-	
-	// wait a few seconds and then unload automatically
-   // If someone wants to prevent this they can just click on the console output to pause execution
-	Sleep(5000);
-	fclose(stderr);
-	if (Dummy) fclose(Dummy);
-	FreeConsole();
 
-	FreeLibraryAndExitThread(Module, 0);
+	while (true)
+	{
+		// If a dump key was set we can reuse that key, otherwise default to F6
+		if (GetAsyncKeyState(cfg::DumpKey == 0 ? VK_F6 : cfg::DumpKey) & 1)
+		{
+			fclose(stderr);
+			if (Dummy) fclose(Dummy);
+			FreeConsole();
+
+			FreeLibraryAndExitThread(Module, 0);
+		}
+
+		Sleep(100);
+	}
+
 	return 0;
 }
 
-
-
-DWORD MainThread(HMODULE Module) {
-	// Grab the path to the dll in case you want to store your settings file adjacent to it and have it out of the game directory
-	char dumper[256]{};
-	GetModuleFileNameA(Module, dumper, 256);
-	Settings::Config::ModulePath = dumper;
-	Settings::Config::Load();
-	std::cerr << Settings::Config::SDKGenerationPath;
-	static auto t_0 = std::chrono::high_resolution_clock::now();
-	// Dump immediately if no timeout or dump key is set
-	if (Settings::Config::SleepTimeout + Settings::Config::DumpKey == 0)
-		return Dump(Module);
-	// If a timeout is set without a dumpkey we will just synchronously wait and then dump
-	if (Settings::Config::DumpKey == 0) {
-		Sleep(Settings::Config::SleepTimeout);
-		return Dump(Module);
-	}
-	// When a dump key is set we need to suspend execution and wait asynchronously to avoid unloading or dumping early
-	else {	
-		std::thread listenerThread(&listener, Settings::Config::DumpKey);
-		listenerThread.detach();
-		auto t_x = std::chrono::high_resolution_clock::now();
-		while (!keyPressed)
-		{
-		// And finally in the case that both a dump key and timeout are set we will continue checking back on this thread 
-			if (Settings::Config::SleepTimeout > 0) {
-				t_x = std::chrono::high_resolution_clock::now();
-				auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(t_x - t_0).count();
-				if (diff >= Settings::Config::SleepTimeout) {
-					std::cerr << "Timeout reached, dumping SDK...\n";
-					return Dump(Module);
-				}
-			}	
-			Sleep(100);
-		}
-		return Dump(Module);
-	}
-
-}
-
-
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
+{
 	switch (reason)
 	{
 	case DLL_PROCESS_ATTACH:
-		DisableThreadLibraryCalls(hModule);
 		CreateThread(0, 0, (LPTHREAD_START_ROUTINE)MainThread, hModule, 0, 0);
 		break;
 	}
 
 	return TRUE;
 }
-
-#define DLL_PROXY_EXPORT_LISTING_FILE "ExportListing.inc"   // List of exported functions
-#define DLL_PROXY_DECLARE_IMPLEMENTATION                    // Define the whole implementation
-#include "QuickDllProxy/DllProxy.h"

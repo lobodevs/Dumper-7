@@ -238,6 +238,7 @@
     <ClInclude Include="Settings.h">
       <Filter>Generator\Public</Filter>
     </ClInclude>
+    <ClInclude Include="I:\code\UEVR\include\uevr\API.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ExportListing.inc" />

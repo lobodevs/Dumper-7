@@ -105,36 +105,61 @@ void Settings::InitArrayDimSizeSettings()
 	Settings::Internal::bUseUint8ArrayDim = false;
 	std::cerr << std::format("\nDumper-7: bUseUint8ArrayDim = {}\n", Settings::Internal::bUseUint8ArrayDim) << std::endl;
 }
+
 void Settings::Config::Load()
 {
 	namespace fs = std::filesystem;
 
-	// Check for config next to dll instead of next to game exe
-	const std::string DllPath = (fs::path(ModulePath).parent_path() / "Dumper-7.ini").string();
-	// Try local Dumper-7.ini 
+	// Try local Dumper-7.ini
 	const std::string LocalPath = (fs::current_path() / "Dumper-7.ini").string();
 	const char* ConfigPath = nullptr;
 
-	if (fs::exists(LocalPath)) ConfigPath = LocalPath.c_str();
-	else if (fs::exists(DllPath)) ConfigPath = DllPath.c_str();
-	else if (fs::exists(GlobalConfigPath)) ConfigPath = GlobalConfigPath;
-
+	if (fs::exists(LocalPath)) // Prioritize game local path first
+	{
+		ConfigPath = LocalPath.c_str();
+		std::cerr << "Loading config from game local path: " << LocalPath << std::endl;
+	}
+	else if (fs::exists(GlobalConfigPath)) // Next check the global path
+	{
+		ConfigPath = GlobalConfigPath;
+		std::cerr << "Loading config from global path: " << GlobalConfigPath << std::endl;
+	}
 
 	// If no config found, use defaults
 	if (!ConfigPath)
 		return;
 
-
 	char SDKNamespace[256] = {};
-	char SDKPath[256] = {};
 	GetPrivateProfileStringA("Settings", "SDKNamespaceName", "SDK", SDKNamespace, sizeof(SDKNamespace), ConfigPath);
-	SDKNamespaceName = SDKNamespace;
-	GetPrivateProfileStringA("Settings", "SDKGenerationPath", "C:/Dumper-7", SDKPath, sizeof(SDKPath), ConfigPath);
-	Settings::Generator::SDKGenerationPath = SDKPath;
 
-	// VK scancode ID as an Int, e.g. 0x77 or 119 = VK_F8 (yes actually type 0x77 in your ini)
+	SDKNamespaceName = SDKNamespace;
+
+	if (strcmp(SDKNamespace, "SDK") != 0)
+		std::cerr << "Using custom namespace: " << SDKNamespaceName << std::endl;
+
+	// Check for output path. Can be made absolute by including a drive otherwise it is relative to the game
+	char SDKPath[256] = {};
+	GetPrivateProfileStringA("Settings", "SDKGenerationPath", "C:/Dumper-7", SDKPath, sizeof(SDKPath), ConfigPath);
+
+	Settings::Generator::SDKGenerationPath = SDKPath;
+	std::cerr << "Dumper-7 SDK Generation Path: " << SDKPath << std::endl;
+
+	// VK scancode ID as an Int, e.g. 0x77 or 119 = VK_F8 (yes actually type 0x77 in your ini). Otherwise defaults to 0 and is ignored
 	DumpKey = max(GetPrivateProfileIntA("Settings", "DumpKey", 0, ConfigPath), 0);
+	if (DumpKey != 0)
+	{
+		// Print the name of the key without including a list of VK codes
+		char keyName[256] = {};
+		LONG lParamValue = (MapVirtualKeyA(DumpKey, MAPVK_VK_TO_VSC) << 16);
+		if(GetKeyNameTextA(lParamValue, keyName, sizeof(keyName)) != 0)
+			std::cerr << "Dump Key set to: " << keyName  << std::endl;
+	}
+
+	// Set a sleep timeout after which point generation will begin automatically even if a key is set. 0 = disabled
 	SleepTimeout = max(GetPrivateProfileIntA("Settings", "SleepTimeout", 0, ConfigPath), 0);
-	// Assume they meant seconds not ms if less than 1k 
-	if (SleepTimeout < 1000) SleepTimeout *= 1000;
+	
+	// Convert seconds to ms automatically if a value under 1 second is set
+	if (SleepTimeout < 1000)
+		SleepTimeout *= 1000;
+	std::cerr << "Sleep Timeout: " << std::dec << SleepTimeout << "ms" << std::endl;
 }
