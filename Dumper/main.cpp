@@ -12,10 +12,10 @@
 
 enum class EFortToastType : uint8
 {
-		Default                        = 0,
-		Subdued                        = 1,
-		Impactful                      = 2,
-		EFortToastType_MAX             = 3,
+        Default                        = 0,
+        Subdued                        = 1,
+        Impactful                      = 2,
+        EFortToastType_MAX             = 3,
 };
 
 // signal for our keylistener. must be declared at file scope to be readable in the lambda
